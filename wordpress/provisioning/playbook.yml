@@ -1,0 +1,98 @@
+---
+- name: Deploy Wordpress server on CentOS 7
+  hosts: localhost
+  user: root
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Fix vagrant home dir
+      file:
+        path: /home/vagrant
+        mode: '0755'
+
+    - name: Create Wordpress installation directories
+      file:
+        path: '{{ item }}'
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: '0755'
+      with_items:
+        - '{{ project_directory }}/{{ project_name }}'
+        - '{{ project_directory }}/{{ project_name }}/tmp'
+
+    - name: Copy .gitignore (in case version control is used; optional)
+      copy:
+        src: template-gitignore
+        dest: '{{ project_directory }}/{{ project_name }}/.gitignore'
+        owner: vagrant
+        group: vagrant
+        mode: '0644'
+
+    - name: Install packages
+      yum:
+        name: '{{ item }}'
+        state: present
+      with_items:
+        - nginx
+        - php-fpm
+        - php-gd
+        - php-mysql
+        - php-pgsql
+        - php-mbstring
+        - mariadb
+        - mariadb-server
+        - MySQL-python
+
+    - name: Configure PHP
+      template:
+        src: template-php.ini.j2
+        dest: /etc/php.ini
+
+    - name: Configure php-fpm
+      template:
+        src: template-php-fpm.conf.j2
+        dest: /etc/php-fpm.conf
+
+    - name: Configure nginx
+      template:
+        src: template-nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+
+    - name: Enable and restart services
+      service:
+        name: '{{ item }}'
+        enabled: yes
+        state: restarted
+      with_items:
+        - mariadb
+        - php-fpm
+        - nginx
+
+    - name: Create database
+      mysql_db:
+        name: '{{ database_name }}'
+        state: present
+
+    - name: Create database user
+      mysql_user:
+        name: '{{ database_user }}'
+        password: '{{ database_password }}'
+        priv: '{{ database_name }}.*:ALL'
+        state: present
+
+    - name: Download Wordpress
+      get_url:
+        url: https://wordpress.org/latest.tar.gz
+        dest: '/tmp/latest.tar.gz'
+      when: wordpress_install
+
+    - name: Extract Wordpress
+      command: tar xvf /tmp/latest.tar.gz -C '{{ project_directory }}/{{ project_name }}' --strip 1
+      when: wordpress_install
+      become_user: vagrant
+      args:
+        creates: '{{ project_directory }}/{{ project_name }}/index.php'
+

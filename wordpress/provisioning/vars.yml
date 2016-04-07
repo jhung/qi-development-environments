@@ -1,0 +1,21 @@
+---
+
+# Short-name idenfying the project
+project_name: wordpress
+
+# Where the project directory will be mounted on the GUEST VM
+project_directory: /home/vagrant/sync
+
+# Download and extract Wordpress?
+wordpress_install: yes
+
+# Database configuration (accessible only on localhost)
+database_name: wordpress
+database_user: username
+database_password: password
+
+# Port where the Nginx web server will be listening on the HOST
+host_web_port: 10080
+
+# Port where the MySQL server will be listening on the HOST
+host_db_port: 13306
